@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: tooltrack-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    rootDir: backend
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false

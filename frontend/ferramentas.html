@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolTrack — Ferramentas</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🔧</div>
+    <div>
+      <div class="brand-text">ToolTrack</div>
+      <div class="brand-sub">Controle de Ferramentas</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"          class="nav-link" data-page="dashboard"><span class="icon">⊞</span> Dashboard</a>
+    <a href="ferramentas.html"    class="nav-link" data-page="ferramentas"><span class="icon">🔩</span> Ferramentas</a>
+    <a href="movimentacoes.html"  class="nav-link" data-page="movimentacoes"><span class="icon">↔</span> Movimentações</a>
+    <a href="funcionarios.html"   class="nav-link" data-page="funcionarios"><span class="icon">👤</span> Funcionários</a>
+    <a href="historico.html"      class="nav-link" data-page="historico"><span class="icon">📋</span> Histórico</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="search" placeholder="Buscar ferramenta..." oninput="filtrar()" />
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div class="page-title">Ferramentas</div>
+        <div class="page-sub">Gerencie o estoque de ferramentas</div>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nova Ferramenta</button>
+    </div>
+
+    <div class="table-card" id="tabela-wrap">
+      <div class="loading">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cadastro/Edição -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-titulo">Nova Ferramenta</div>
+    <input type="hidden" id="edit-id" />
+
+    <div class="form-group">
+      <label class="form-label">Nome</label>
+      <input class="form-control" id="f-nome" placeholder="Ex: Furadeira de Impacto" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descrição</label>
+      <input class="form-control" id="f-desc" placeholder="Breve descrição da ferramenta" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Quantidade</label>
+      <input class="form-control" id="f-qtd" type="number" min="0" placeholder="0" />
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="salvar()">Salvar</button>
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+activateNav('ferramentas');
+let dados = [];
+
+async function carregar() {
+  try {
+    dados = await api.ferramentas.listar();
+    renderizar(dados);
+  } catch {
+    document.getElementById('tabela-wrap').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Erro ao carregar</div><div class="empty-sub">Backend offline?</div></div>`;
+  }
+}
+
+function renderizar(lista) {
+  if (lista.length === 0) {
+    document.getElementById('tabela-wrap').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔩</div>
+        <div class="empty-text">Nenhuma ferramenta cadastrada</div>
+        <div class="empty-sub">Clique em "Nova Ferramenta" para começar</div>
+      </div>`;
+    return;
+  }
+  document.getElementById('tabela-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Nome</th><th>Descrição</th><th>Qtd</th><th>Status</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.map(f => `
+          <tr>
+            <td style="font-family:'DM Mono',monospace;color:var(--muted)">${f.id}</td>
+            <td style="font-weight:700">${f.nome}</td>
+            <td style="color:var(--muted)">${f.descricao || '—'}</td>
+            <td style="font-family:'DM Mono',monospace">${f.quantidade}</td>
+            <td><span class="badge ${f.disponivel ? 'badge-green' : 'badge-red'}">${f.disponivel ? 'Disponível' : 'Indisponível'}</span></td>
+            <td style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="editar(${f.id})">✏️ Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deletar(${f.id}, '${f.nome}')">🗑</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderizar(dados.filter(f => f.nome.toLowerCase().includes(q) || (f.descricao||'').toLowerCase().includes(q)));
+}
+
+function abrirModal(id) {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-qtd').value = '';
+  document.getElementById('modal-titulo').textContent = 'Nova Ferramenta';
+  document.getElementById('modal').classList.add('open');
+}
+
+async function editar(id) {
+  try {
+    const f = await api.ferramentas.buscar(id);
+    document.getElementById('edit-id').value = f.id;
+    document.getElementById('f-nome').value = f.nome;
+    document.getElementById('f-desc').value = f.descricao || '';
+    document.getElementById('f-qtd').value = f.quantidade;
+    document.getElementById('modal-titulo').textContent = 'Editar Ferramenta';
+    document.getElementById('modal').classList.add('open');
+  } catch { toast('Erro ao carregar ferramenta', 'error'); }
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function salvar() {
+  const id   = document.getElementById('edit-id').value;
+  const nome = document.getElementById('f-nome').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  const qtd  = parseInt(document.getElementById('f-qtd').value);
+
+  if (!nome || isNaN(qtd)) { toast('Preencha nome e quantidade.', 'error'); return; }
+
+  const body = { nome, descricao: desc, quantidade: qtd };
+  try {
+    if (id) await api.ferramentas.editar(id, body);
+    else    await api.ferramentas.criar(body);
+    toast(id ? 'Ferramenta atualizada!' : 'Ferramenta cadastrada!');
+    fecharModal();
+    carregar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deletar(id, nome) {
+  if (!confirm(`Remover "${nome}"?`)) return;
+  try {
+    await api.ferramentas.deletar(id);
+    toast('Ferramenta removida.');
+    carregar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharModal();
+});
+
+carregar();
+</script>
+</body>
+</html>

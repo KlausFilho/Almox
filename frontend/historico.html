@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolTrack — Histórico</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🔧</div>
+    <div>
+      <div class="brand-text">ToolTrack</div>
+      <div class="brand-sub">Controle de Ferramentas</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"          class="nav-link" data-page="dashboard"><span class="icon">⊞</span> Dashboard</a>
+    <a href="ferramentas.html"    class="nav-link" data-page="ferramentas"><span class="icon">🔩</span> Ferramentas</a>
+    <a href="movimentacoes.html"  class="nav-link" data-page="movimentacoes"><span class="icon">↔</span> Movimentações</a>
+    <a href="funcionarios.html"   class="nav-link" data-page="funcionarios"><span class="icon">👤</span> Funcionários</a>
+    <a href="historico.html"      class="nav-link" data-page="historico"><span class="icon">📋</span> Histórico</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="search" placeholder="Buscar por ferramenta ou funcionário..." oninput="filtrar()" />
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div class="page-title">Histórico</div>
+        <div class="page-sub">Todas as movimentações registradas</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <select class="form-control" id="filtro-tipo" onchange="filtrar()" style="width:auto;padding:8px 14px;font-size:13px;">
+          <option value="">Todos os tipos</option>
+          <option value="RETIRADA">Retirada</option>
+          <option value="DEVOLUCAO">Devolução</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-card" id="tabela-wrap">
+      <div class="loading">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+activateNav('historico');
+let dados = [];
+
+async function carregar() {
+  try {
+    dados = await api.movimentacoes.listar();
+    renderizar(dados);
+  } catch {
+    document.getElementById('tabela-wrap').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Erro ao carregar histórico</div></div>`;
+  }
+}
+
+function renderizar(lista) {
+  if (lista.length === 0) {
+    document.getElementById('tabela-wrap').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">Nenhuma movimentação encontrada</div>
+        <div class="empty-sub">Registre movimentações na página de Movimentações</div>
+      </div>`;
+    return;
+  }
+  document.getElementById('tabela-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr><th>#</th><th>Data/Hora</th><th>Ferramenta</th><th>Funcionário</th><th>Tipo</th></tr>
+      </thead>
+      <tbody>
+        ${lista.map(r => `
+          <tr>
+            <td style="font-family:'DM Mono',monospace;color:var(--muted)">${r.id}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">${formatDate(r.dataHora)}</td>
+            <td style="font-weight:700">${r.ferramenta}</td>
+            <td>${r.funcionario}</td>
+            <td>
+              <span class="badge ${r.tipo === 'RETIRADA' ? 'badge-red' : 'badge-green'}">
+                ${r.tipo === 'RETIRADA' ? '↗ ' : '↙ '}${r.tipo}
+              </span>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div style="padding:14px 22px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">
+      ${lista.length} registro(s) encontrado(s)
+    </div>`;
+}
+
+function filtrar() {
+  const q    = document.getElementById('search').value.toLowerCase();
+  const tipo = document.getElementById('filtro-tipo').value;
+  renderizar(dados.filter(r => {
+    const matchText = r.ferramenta.toLowerCase().includes(q) || r.funcionario.toLowerCase().includes(q);
+    const matchTipo = !tipo || r.tipo === tipo;
+    return matchText && matchTipo;
+  }));
+}
+
+carregar();
+</script>
+</body>
+</html>

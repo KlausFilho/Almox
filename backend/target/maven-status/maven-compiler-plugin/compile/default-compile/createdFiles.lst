@@ -1,0 +1,13 @@
+com\almoxarifado\Application.class
+com\almoxarifado\dao\RegistroDAO.class
+com\almoxarifado\controller\DashboardController.class
+com\almoxarifado\controller\FerramentaController.class
+com\almoxarifado\model\Registro.class
+com\almoxarifado\dao\FuncionarioDAO.class
+com\almoxarifado\model\Ferramenta.class
+com\almoxarifado\model\Funcionario.class
+com\almoxarifado\controller\FuncionarioController.class
+com\almoxarifado\dao\FerramentaDAO.class
+com\almoxarifado\dao\Conexao.class
+com\almoxarifado\config\CorsConfig.class
+com\almoxarifado\controller\MovimentacaoController.class

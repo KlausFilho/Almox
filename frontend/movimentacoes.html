@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolTrack — Movimentações</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🔧</div>
+    <div>
+      <div class="brand-text">ToolTrack</div>
+      <div class="brand-sub">Controle de Ferramentas</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"          class="nav-link" data-page="dashboard"><span class="icon">⊞</span> Dashboard</a>
+    <a href="ferramentas.html"    class="nav-link" data-page="ferramentas"><span class="icon">🔩</span> Ferramentas</a>
+    <a href="movimentacoes.html"  class="nav-link" data-page="movimentacoes"><span class="icon">↔</span> Movimentações</a>
+    <a href="funcionarios.html"   class="nav-link" data-page="funcionarios"><span class="icon">👤</span> Funcionários</a>
+    <a href="historico.html"      class="nav-link" data-page="historico"><span class="icon">📋</span> Histórico</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" placeholder="Buscar..." />
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="page-header">
+      <div class="page-title">Movimentações</div>
+      <div class="page-sub">Registre retiradas e devoluções de ferramentas</div>
+    </div>
+
+    <div class="grid-2col" style="grid-template-columns: 480px 1fr; gap: 24px; align-items: start;">
+
+      <!-- Formulário -->
+      <div class="form-card">
+        <div style="font-size:16px;font-weight:800;margin-bottom:20px;">Nova Movimentação</div>
+
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <div style="display:flex;gap:12px;">
+            <label style="flex:1;cursor:pointer;">
+              <input type="radio" name="tipo" value="RETIRADA" id="tipo-ret" checked style="display:none;" />
+              <div class="tipo-btn" id="btn-ret" style="padding:10px;border-radius:8px;border:2px solid var(--danger);background:#3d1a1a;text-align:center;font-size:13px;font-weight:700;color:var(--danger);transition:all 0.18s;">
+                ↗ Retirada
+              </div>
+            </label>
+            <label style="flex:1;cursor:pointer;">
+              <input type="radio" name="tipo" value="DEVOLUCAO" id="tipo-dev" style="display:none;" />
+              <div class="tipo-btn" id="btn-dev" style="padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);text-align:center;font-size:13px;font-weight:700;color:var(--muted);transition:all 0.18s;">
+                ↙ Devolução
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Ferramenta</label>
+          <select class="form-control" id="sel-ferramenta">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Funcionário</label>
+          <select class="form-control" id="sel-funcionario">
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="registrar()" style="width:100%;justify-content:center;">
+            Confirmar Movimentação
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview da ferramenta selecionada -->
+      <div>
+        <div class="table-card" id="preview" style="display:none;">
+          <div class="table-header"><span class="table-title">Ferramenta Selecionada</span></div>
+          <div style="padding:20px;" id="preview-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+activateNav('movimentacoes');
+
+async function carregar() {
+  const [ferramentas, funcionarios] = await Promise.all([
+    api.ferramentas.listar(),
+    api.funcionarios.listar()
+  ]);
+
+  const selF = document.getElementById('sel-ferramenta');
+  selF.innerHTML = '<option value="">Selecione uma ferramenta</option>' +
+    ferramentas.map(f => `<option value="${f.id}">${f.nome} (Qtd: ${f.quantidade}) ${f.disponivel ? '' : '— Indisponível'}</option>`).join('');
+
+  const selFu = document.getElementById('sel-funcionario');
+  selFu.innerHTML = '<option value="">Selecione um funcionário</option>' +
+    funcionarios.map(f => `<option value="${f.id}">${f.nome} — ${f.funcao}</option>`).join('');
+
+  selF.addEventListener('change', async () => {
+    const id = selF.value;
+    if (!id) { document.getElementById('preview').style.display = 'none'; return; }
+    const f = await api.ferramentas.buscar(id);
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('preview-body').innerHTML = `
+      <div style="display:grid;gap:12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);font-size:13px;">Nome</span>
+          <span style="font-weight:700">${f.nome}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);font-size:13px;">Descrição</span>
+          <span>${f.descricao || '—'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);font-size:13px;">Quantidade</span>
+          <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800;">${f.quantidade}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--muted);font-size:13px;">Status</span>
+          <span class="badge ${f.disponivel?'badge-green':'badge-red'}">${f.disponivel?'Disponível':'Indisponível'}</span>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// Troca visual dos botões de tipo
+document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    const isRet = document.getElementById('tipo-ret').checked;
+    document.getElementById('btn-ret').style.cssText = isRet
+      ? 'padding:10px;border-radius:8px;border:2px solid var(--danger);background:#3d1a1a;text-align:center;font-size:13px;font-weight:700;color:var(--danger);'
+      : 'padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);text-align:center;font-size:13px;font-weight:700;color:var(--muted);';
+    document.getElementById('btn-dev').style.cssText = !isRet
+      ? 'padding:10px;border-radius:8px;border:2px solid var(--accent2);background:#1a3d2e;text-align:center;font-size:13px;font-weight:700;color:var(--accent2);'
+      : 'padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);text-align:center;font-size:13px;font-weight:700;color:var(--muted);';
+  });
+});
+
+async function registrar() {
+  const tipo         = document.querySelector('input[name="tipo"]:checked').value;
+  const ferramentaId = parseInt(document.getElementById('sel-ferramenta').value);
+  const funcionarioId= parseInt(document.getElementById('sel-funcionario').value);
+
+  if (!ferramentaId || !funcionarioId) { toast('Selecione ferramenta e funcionário.', 'error'); return; }
+
+  try {
+    await api.movimentacoes.registrar({ ferramentaId, funcionarioId, tipo });
+    toast(`${tipo === 'RETIRADA' ? 'Retirada' : 'Devolução'} registrada com sucesso!`);
+    document.getElementById('sel-ferramenta').value = '';
+    document.getElementById('sel-funcionario').value = '';
+    document.getElementById('preview').style.display = 'none';
+    carregar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+carregar();
+</script>
+</body>
+</html>

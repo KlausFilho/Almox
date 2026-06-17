@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToolTrack — Funcionários</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">🔧</div>
+    <div>
+      <div class="brand-text">ToolTrack</div>
+      <div class="brand-sub">Controle de Ferramentas</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="index.html"          class="nav-link" data-page="dashboard"><span class="icon">⊞</span> Dashboard</a>
+    <a href="ferramentas.html"    class="nav-link" data-page="ferramentas"><span class="icon">🔩</span> Ferramentas</a>
+    <a href="movimentacoes.html"  class="nav-link" data-page="movimentacoes"><span class="icon">↔</span> Movimentações</a>
+    <a href="funcionarios.html"   class="nav-link" data-page="funcionarios"><span class="icon">👤</span> Funcionários</a>
+    <a href="historico.html"      class="nav-link" data-page="historico"><span class="icon">📋</span> Histórico</a>
+  </nav>
+</aside>
+<div class="sidebar-overlay"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menu">☰</button>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="search" placeholder="Buscar funcionário..." oninput="filtrar()" />
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div class="page-title">Funcionários</div>
+        <div class="page-sub">Gerencie os funcionários cadastrados</div>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Novo Funcionário</button>
+    </div>
+
+    <div class="table-card" id="tabela-wrap">
+      <div class="loading">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-titulo">Novo Funcionário</div>
+    <input type="hidden" id="edit-id" />
+
+    <div class="form-group">
+      <label class="form-label">Nome</label>
+      <input class="form-control" id="f-nome" placeholder="Nome completo" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Matrícula</label>
+        <input class="form-control" id="f-mat" placeholder="Ex: 00123" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Função</label>
+        <input class="form-control" id="f-func" placeholder="Ex: Técnico" />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="salvar()">Salvar</button>
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+activateNav('funcionarios');
+let dados = [];
+
+async function carregar() {
+  try {
+    dados = await api.funcionarios.listar();
+    renderizar(dados);
+  } catch {
+    document.getElementById('tabela-wrap').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Erro ao carregar</div></div>`;
+  }
+}
+
+function renderizar(lista) {
+  if (lista.length === 0) {
+    document.getElementById('tabela-wrap').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">👤</div>
+        <div class="empty-text">Nenhum funcionário cadastrado</div>
+        <div class="empty-sub">Clique em "Novo Funcionário" para começar</div>
+      </div>`;
+    return;
+  }
+  document.getElementById('tabela-wrap').innerHTML = `
+    <table>
+      <thead>
+        <tr><th>#</th><th>Nome</th><th>Matrícula</th><th>Função</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        ${lista.map(f => `
+          <tr>
+            <td style="font-family:'DM Mono',monospace;color:var(--muted)">${f.id}</td>
+            <td style="font-weight:700">${f.nome}</td>
+            <td style="font-family:'DM Mono',monospace">${f.matricula}</td>
+            <td><span class="badge badge-yellow">${f.funcao}</span></td>
+            <td style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="editar(${f.id})">✏️ Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deletar(${f.id}, '${f.nome}')">🗑</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderizar(dados.filter(f =>
+    f.nome.toLowerCase().includes(q) ||
+    f.matricula.toLowerCase().includes(q) ||
+    f.funcao.toLowerCase().includes(q)
+  ));
+}
+
+function abrirModal() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-mat').value = '';
+  document.getElementById('f-func').value = '';
+  document.getElementById('modal-titulo').textContent = 'Novo Funcionário';
+  document.getElementById('modal').classList.add('open');
+}
+
+async function editar(id) {
+  try {
+    const f = await api.funcionarios.buscar(id);
+    document.getElementById('edit-id').value = f.id;
+    document.getElementById('f-nome').value = f.nome;
+    document.getElementById('f-mat').value = f.matricula;
+    document.getElementById('f-func').value = f.funcao;
+    document.getElementById('modal-titulo').textContent = 'Editar Funcionário';
+    document.getElementById('modal').classList.add('open');
+  } catch { toast('Erro ao carregar funcionário', 'error'); }
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function salvar() {
+  const id   = document.getElementById('edit-id').value;
+  const nome = document.getElementById('f-nome').value.trim();
+  const mat  = document.getElementById('f-mat').value.trim();
+  const func = document.getElementById('f-func').value.trim();
+
+  if (!nome || !mat || !func) { toast('Preencha todos os campos.', 'error'); return; }
+
+  const body = { nome, matricula: mat, funcao: func };
+  try {
+    if (id) await api.funcionarios.editar(id, body);
+    else    await api.funcionarios.criar(body);
+    toast(id ? 'Funcionário atualizado!' : 'Funcionário cadastrado!');
+    fecharModal();
+    carregar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deletar(id, nome) {
+  if (!confirm(`Remover "${nome}"?`)) return;
+  try {
+    await api.funcionarios.deletar(id);
+    toast('Funcionário removido.');
+    carregar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) fecharModal();
+});
+
+carregar();
+</script>
+</body>
+</html>
